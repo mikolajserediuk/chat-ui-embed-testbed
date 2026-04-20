@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>AI Chat Widget — Embed Testbed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+        :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        body { margin: 0; padding: 24px; background: #f7f8fa; color: #1d1f22; }
+        h1 { margin: 0 0 8px; font-size: 22px; }
+        p.lead { margin: 0 0 24px; color: #5a6370; }
+        p.lead code { background: #edf0f4; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1100px; }
+        .card { background: #fff; border: 1px solid #e3e6eb; border-radius: 8px; padding: 16px; }
+        .card h2 { margin: 0 0 12px; font-size: 16px; }
+        label { display: block; margin: 10px 0 4px; font-size: 12px; color: #5a6370; }
+        input[type="text"], textarea { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #d0d5dd; border-radius: 4px; font-family: monospace; font-size: 12px; }
+        textarea { min-height: 64px; resize: vertical; }
+        .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+        button { padding: 8px 14px; border: 1px solid #d0d5dd; background: #fff; border-radius: 4px; cursor: pointer; font-size: 13px; }
+        button.primary { background: #0a66c2; color: #fff; border-color: #0a66c2; }
+        button:hover { filter: brightness(0.96); }
+        #log { height: 420px; overflow: auto; background: #0f1419; color: #d7e2ea; font-family: monospace; font-size: 12px; padding: 12px; border-radius: 4px; margin: 0; }
+        #log .entry { padding: 2px 0; border-bottom: 1px solid #20282f; }
+        #log .entry.event { color: #8dd7ff; }
+        #log .entry.call { color: #fbe78a; }
+        #log .entry.error { color: #ff7a7a; }
+    </style>
+</head>
+<body>
+    <h1>AI Chat Widget — Embed Testbed</h1>
+    <p class="lead">
+        Host origin: <strong id="host-origin"></strong>. Paste a valid <code>JWT</code>, set <code>baseUrl</code> to the mercury-ui deployment you want to test against, and click <strong>init</strong>.
+    </p>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Configuration</h2>
+            <label for="base-url">baseUrl</label>
+            <input type="text" id="base-url" value="https://staging.cobundu.com"/>
+
+            <label for="jwt">jwt <em style="font-weight:normal;color:#7a8492">(never commit a real token)</em></label>
+            <textarea id="jwt" placeholder="paste JWT here"></textarea>
+
+            <label for="product">product</label>
+            <input type="text" id="product" value="SpacewellWorkplace"/>
+
+            <label>width / height / zIndex / allowFullscreen</label>
+            <div class="row">
+                <input type="text" id="width" value="600" style="max-width:80px" placeholder="width"/>
+                <input type="text" id="height" value="800" style="max-width:80px" placeholder="height"/>
+                <input type="text" id="z-index" value="2147483000" style="max-width:120px" placeholder="zIndex"/>
+                <label style="display:inline-flex;align-items:center;gap:6px;margin:0;">
+                    <input type="checkbox" id="allow-fullscreen" checked/> allowFullscreen
+                </label>
+            </div>
+
+            <label>bubbleOffsetX / bubbleOffsetY / panelOffsetX / panelGap (px)</label>
+            <div class="row">
+                <input type="text" id="bubble-offset-x" value="24" style="max-width:80px" placeholder="bubbleX"/>
+                <input type="text" id="bubble-offset-y" value="24" style="max-width:80px" placeholder="bubbleY"/>
+                <input type="text" id="panel-offset-x" value="24" style="max-width:80px" placeholder="panelX"/>
+                <input type="text" id="panel-gap" value="32" style="max-width:80px" placeholder="gap"/>
+                <label style="display:inline-flex;align-items:center;gap:6px;margin:0;">
+                    <input type="checkbox" id="bubble-icon-only" checked/> bubbleIconOnly
+                </label>
+            </div>
+
+            <div class="row">
+                <button class="primary" id="btn-init">init</button>
+                <button id="btn-destroy">destroy</button>
+                <button id="btn-open">open</button>
+                <button id="btn-close">close</button>
+                <button id="btn-toggle">toggle</button>
+                <button id="btn-update-jwt">updateJwt (current)</button>
+                <button id="btn-clear-log">clear log</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Event log</h2>
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('host-origin').textContent = location.origin;
+
+        const logEl = document.getElementById('log');
+        function log(kind, text) {
+            const el = document.createElement('div');
+            el.className = 'entry ' + kind;
+            el.textContent = '[' + new Date().toLocaleTimeString() + '] ' + text;
+            logEl.insertBefore(el, logEl.firstChild);
+        }
+
+        function readConfig() {
+            const jwt = document.getElementById('jwt').value.trim();
+            const baseUrl = document.getElementById('base-url').value.trim();
+            const product = document.getElementById('product').value.trim() || undefined;
+            const width = Number(document.getElementById('width').value) || undefined;
+            const height = Number(document.getElementById('height').value) || undefined;
+            const zIndex = Number(document.getElementById('z-index').value) || undefined;
+            const allowFullscreen = document.getElementById('allow-fullscreen').checked;
+            const bubbleOffsetX = Number(document.getElementById('bubble-offset-x').value) || undefined;
+            const bubbleOffsetY = Number(document.getElementById('bubble-offset-y').value) || undefined;
+            const panelOffsetX = Number(document.getElementById('panel-offset-x').value) || undefined;
+            const panelGap = Number(document.getElementById('panel-gap').value) || undefined;
+            const bubbleIconOnly = document.getElementById('bubble-icon-only').checked;
+            return { jwt, baseUrl, product, width, height, zIndex, allowFullscreen, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly };
+        }
+
+        function ensureScriptLoaded(baseUrl) {
+            return new Promise((resolve, reject) => {
+                if (window.MercuryChat) return resolve();
+                const s = document.createElement('script');
+                s.src = baseUrl.replace(/\/$/, '') + '/embed/chat/chat-widget.js';
+                s.async = true;
+                s.onload = () => { log('call', 'loader script loaded'); resolve(); };
+                s.onerror = () => { log('error', 'loader script FAILED to load (check baseUrl + cert trust for localhost)'); reject(new Error('script load failed')); };
+                document.head.appendChild(s);
+            });
+        }
+
+        function wireEventListeners() {
+            if (!window.MercuryChat) return;
+            ['ready', 'error', 'open', 'close', 'expand', 'collapse'].forEach(function (evt) {
+                MercuryChat.on(evt, function (payload) {
+                    log('event', 'on(' + evt + ') ' + (payload ? JSON.stringify(payload) : ''));
+                });
+            });
+        }
+
+        document.getElementById('btn-init').addEventListener('click', async () => {
+            try {
+                const cfg = readConfig();
+                if (!cfg.jwt) return log('error', 'JWT is empty — paste a valid token first');
+                if (!cfg.baseUrl) return log('error', 'baseUrl is empty');
+                log('call', 'init(' + JSON.stringify({ ...cfg, jwt: cfg.jwt.slice(0, 12) + '…' }) + ')');
+                await ensureScriptLoaded(cfg.baseUrl);
+                if (!window.MercuryChat) return log('error', 'window.MercuryChat missing after load');
+                MercuryChat.init(cfg);
+                wireEventListeners();
+            } catch (e) { log('error', String(e)); }
+        });
+
+        document.getElementById('btn-destroy').addEventListener('click', () => {
+            log('call', 'destroy()');
+            if (window.MercuryChat) MercuryChat.destroy();
+        });
+        document.getElementById('btn-open').addEventListener('click', () => {
+            log('call', 'open()');
+            if (window.MercuryChat) MercuryChat.open();
+        });
+        document.getElementById('btn-close').addEventListener('click', () => {
+            log('call', 'close()');
+            if (window.MercuryChat) MercuryChat.close();
+        });
+        document.getElementById('btn-toggle').addEventListener('click', () => {
+            log('call', 'toggle()');
+            if (window.MercuryChat) MercuryChat.toggle();
+        });
+        document.getElementById('btn-update-jwt').addEventListener('click', () => {
+            const token = document.getElementById('jwt').value.trim();
+            if (!token) return log('error', 'JWT is empty');
+            log('call', 'updateJwt(' + token.slice(0, 12) + '…)');
+            if (window.MercuryChat) MercuryChat.updateJwt(token);
+        });
+        document.getElementById('btn-clear-log').addEventListener('click', () => { logEl.innerHTML = ''; });
+
+        log('call', 'ready; paste JWT and click init');
+    </script>
+</body>
+</html>
