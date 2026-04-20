@@ -2,7 +2,7 @@
 
 A single-page harness for integrators and QA to poke at the Mercury AI chat embed widget from a real third-party origin.
 
-**Live:** https://mykola-serediuk_nmtschk.github.io/chat-ui-embed-testbed/ *(enable GitHub Pages on this repo to activate)*
+**Live:** https://mikolajserediuk.github.io/chat-ui-embed-testbed/ *(enable GitHub Pages on this repo to activate)*
 
 ## What it does
 
