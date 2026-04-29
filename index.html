@@ -37,16 +37,20 @@
         <div class="card">
             <h2>Configuration</h2>
             <label for="base-url">baseUrl</label>
-            <input type="text" id="base-url" value="https://staging.cobundu.com"/>
+            <input type="text" id="base-url" value="https://dev.cobundu.com"/>
 
             <label for="jwt">jwt <em style="font-weight:normal;color:#7a8492">(never commit a real token)</em></label>
-            <textarea id="jwt" placeholder="paste JWT here"></textarea>
+            <textarea id="jwt" placeholder="paste AI JWT (sub claim used as userId)"></textarea>
 
             <label for="product">product</label>
             <input type="text" id="product" value="SpacewellWorkplace"/>
 
-            <label>width / height / zIndex / allowFullscreen</label>
+            <label>theme / width / height / zIndex / allowFullscreen</label>
             <div class="row">
+                <select id="theme" style="max-width:90px">
+                    <option value="light">light</option>
+                    <option value="dark">dark</option>
+                </select>
                 <input type="text" id="width" value="600" style="max-width:80px" placeholder="width"/>
                 <input type="text" id="height" value="800" style="max-width:80px" placeholder="height"/>
                 <input type="text" id="z-index" value="2147483000" style="max-width:120px" placeholder="zIndex"/>
@@ -73,6 +77,7 @@
                 <button id="btn-close">close</button>
                 <button id="btn-toggle">toggle</button>
                 <button id="btn-update-jwt">updateJwt (current)</button>
+                <button id="btn-set-theme">setTheme (current)</button>
                 <button id="btn-clear-log">clear log</button>
             </div>
         </div>
@@ -98,6 +103,7 @@
             const jwt = document.getElementById('jwt').value.trim();
             const baseUrl = document.getElementById('base-url').value.trim();
             const product = document.getElementById('product').value.trim() || undefined;
+            const theme = document.getElementById('theme').value;
             const width = Number(document.getElementById('width').value) || undefined;
             const height = Number(document.getElementById('height').value) || undefined;
             const zIndex = Number(document.getElementById('z-index').value) || undefined;
@@ -107,14 +113,14 @@
             const panelOffsetX = Number(document.getElementById('panel-offset-x').value) || undefined;
             const panelGap = Number(document.getElementById('panel-gap').value) || undefined;
             const bubbleIconOnly = document.getElementById('bubble-icon-only').checked;
-            return { jwt, baseUrl, product, width, height, zIndex, allowFullscreen, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly };
+            return { jwt, baseUrl, product, theme, width, height, zIndex, allowFullscreen, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly };
         }
 
         function ensureScriptLoaded(baseUrl) {
             return new Promise((resolve, reject) => {
                 if (window.MercuryChat) return resolve();
                 const s = document.createElement('script');
-                s.src = baseUrl.replace(/\/$/, '') + '/embed/chat/chat-widget.js';
+                s.src = baseUrl.replace(/\/$/, '') + '/assets/build/embed/chat/chat-widget.js';
                 s.async = true;
                 s.onload = () => { log('call', 'loader script loaded'); resolve(); };
                 s.onerror = () => { log('error', 'loader script FAILED to load (check baseUrl + cert trust for localhost)'); reject(new Error('script load failed')); };
@@ -165,6 +171,11 @@
             if (!token) return log('error', 'JWT is empty');
             log('call', 'updateJwt(' + token.slice(0, 12) + '…)');
             if (window.MercuryChat) MercuryChat.updateJwt(token);
+        });
+        document.getElementById('btn-set-theme').addEventListener('click', () => {
+            const theme = document.getElementById('theme').value;
+            log('call', 'setTheme(' + theme + ')');
+            if (window.MercuryChat) MercuryChat.setTheme(theme);
         });
         document.getElementById('btn-clear-log').addEventListener('click', () => { logEl.innerHTML = ''; });
 
