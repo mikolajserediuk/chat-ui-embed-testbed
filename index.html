@@ -120,7 +120,7 @@
             return new Promise((resolve, reject) => {
                 if (window.MercuryChat) return resolve();
                 const s = document.createElement('script');
-                s.src = baseUrl.replace(/\/$/, '') + '/assets/build/embed/chat/chat-widget.js';
+                s.src = baseUrl.replace(/\/$/, '') + '/embed/chat/chat-widget.js';
                 s.async = true;
                 s.onload = () => { log('call', 'loader script loaded'); resolve(); };
                 s.onerror = () => { log('error', 'loader script FAILED to load (check baseUrl + cert trust for localhost)'); reject(new Error('script load failed')); };

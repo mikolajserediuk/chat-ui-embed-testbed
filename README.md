@@ -6,7 +6,7 @@ A single-page harness for integrators and QA to poke at the Mercury AI chat embe
 
 ## What it does
 
-Loads `<baseUrl>/assets/build/embed/chat/chat-widget.js` dynamically and exposes UI controls for the full public API:
+Loads `<baseUrl>/embed/chat/chat-widget.js` dynamically and exposes UI controls for the full public API:
 
 - `init` / `destroy`
 - `open` / `close` / `toggle`
@@ -34,7 +34,7 @@ Then open http://localhost:8081/ and:
 
 If `baseUrl` is `https://localhost:8080` (self-signed cert), browsers silently refuse to load cross-origin `<script>` resources until the cert is trusted:
 
-- Open `https://localhost:8080/assets/build/embed/chat/chat-widget.js` in a new tab once.
+- Open `https://localhost:8080/embed/chat/chat-widget.js` in a new tab once.
 - Click through the "Your connection is not private" warning.
 - Come back to this page and click **init**.
 
