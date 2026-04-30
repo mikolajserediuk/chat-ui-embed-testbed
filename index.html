@@ -84,6 +84,9 @@
                 <label style="display:inline-flex;align-items:center;gap:6px;margin:0;">
                     <input type="checkbox" id="show-close-button" checked/> showCloseButton
                 </label>
+                <label style="display:inline-flex;align-items:center;gap:6px;margin:0;">
+                    <input type="checkbox" id="hide-sidebar"/> hideSidebar
+                </label>
             </div>
 
             <label>bubbleOffsetX / bubbleOffsetY / panelOffsetX / panelGap (px)</label>
@@ -179,12 +182,13 @@
             const zIndex = readNumber('z-index');
             const allowFullscreen = document.getElementById('allow-fullscreen').checked;
             const showCloseButton = document.getElementById('show-close-button').checked;
+            const hideSidebar = document.getElementById('hide-sidebar').checked;
             const bubbleOffsetX = readNumber('bubble-offset-x');
             const bubbleOffsetY = readNumber('bubble-offset-y');
             const panelOffsetX = readNumber('panel-offset-x');
             const panelGap = readNumber('panel-gap');
             const bubbleIconOnly = document.getElementById('bubble-icon-only').checked;
-            return { jwt, baseUrl, product, userName, chatId, location, locationDirectory, theme, position, width, height, zIndex, allowFullscreen, showCloseButton, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly };
+            return { jwt, baseUrl, product, userName, chatId, location, locationDirectory, theme, position, width, height, zIndex, allowFullscreen, showCloseButton, hideSidebar, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly };
         }
 
         function ensureScriptLoaded(baseUrl) {
