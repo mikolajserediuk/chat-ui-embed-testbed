@@ -6,13 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <style>
         :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-        body { margin: 0; padding: 24px; background: #f7f8fa; color: #1d1f22; }
+        body { margin: 0; padding: 24px; background: #f7f8fa; color: #1d1f22; box-sizing: border-box; }
         h1 { margin: 0 0 8px; font-size: 22px; }
         p.lead { margin: 0 0 24px; color: #5a6370; }
         p.lead code { background: #edf0f4; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1100px; }
-        .card { background: #fff; border: 1px solid #e3e6eb; border-radius: 8px; padding: 16px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1100px; align-items: start; }
+        .card { background: #fff; border: 1px solid #e3e6eb; border-radius: 8px; padding: 16px; min-width: 0; }
         .card h2 { margin: 0 0 12px; font-size: 16px; }
+        .card.log-card { position: sticky; top: 24px; }
         label { display: block; margin: 10px 0 4px; font-size: 12px; color: #5a6370; }
         input[type="text"], textarea { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #d0d5dd; border-radius: 4px; font-family: monospace; font-size: 12px; }
         textarea { min-height: 64px; resize: vertical; }
@@ -20,11 +21,15 @@
         button { padding: 8px 14px; border: 1px solid #d0d5dd; background: #fff; border-radius: 4px; cursor: pointer; font-size: 13px; }
         button.primary { background: #0a66c2; color: #fff; border-color: #0a66c2; }
         button:hover { filter: brightness(0.96); }
-        #log { height: 420px; overflow: auto; background: #0f1419; color: #d7e2ea; font-family: monospace; font-size: 12px; padding: 12px; border-radius: 4px; margin: 0; }
-        #log .entry { padding: 2px 0; border-bottom: 1px solid #20282f; }
+        #log { height: min(60vh, 480px); overflow: auto; background: #0f1419; color: #d7e2ea; font-family: monospace; font-size: 12px; padding: 12px; border-radius: 4px; margin: 0; }
+        #log .entry { padding: 2px 0; border-bottom: 1px solid #20282f; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; }
         #log .entry.event { color: #8dd7ff; }
         #log .entry.call { color: #fbe78a; }
         #log .entry.error { color: #ff7a7a; }
+        @media (max-width: 760px) {
+            .grid { grid-template-columns: 1fr; }
+            .card.log-card { position: static; }
+        }
     </style>
 </head>
 <body>
@@ -45,7 +50,22 @@
             <label for="product">product</label>
             <input type="text" id="product" value="SpacewellWorkplace"/>
 
-            <label>theme / width / height / zIndex / allowFullscreen</label>
+            <label for="user-name">userName</label>
+            <input type="text" id="user-name" placeholder="e.g. Mykola"/>
+
+            <label for="chat-id">chatId <em style="font-weight:normal;color:#7a8492">(resume an existing conversation)</em></label>
+            <input type="text" id="chat-id" placeholder="optional"/>
+
+            <label>location <em style="font-weight:normal;color:#7a8492">(initial building scope)</em></label>
+            <div class="row">
+                <input type="text" id="location-id" style="flex:1;min-width:120px" placeholder="location.id (e.g. bldg-1)"/>
+                <input type="text" id="location-label" style="flex:1;min-width:120px" placeholder="location.label (e.g. HQ)"/>
+            </div>
+
+            <label for="location-directory">locationDirectory <em style="font-weight:normal;color:#7a8492">(JSON: { "id": "label" })</em></label>
+            <textarea id="location-directory" placeholder='{ "bldg-1": "HQ", "bldg-2": "Annex" }'></textarea>
+
+            <label>theme / width / height / zIndex / allowFullscreen / showCloseButton</label>
             <div class="row">
                 <select id="theme" style="max-width:90px">
                     <option value="light">light</option>
@@ -56,6 +76,9 @@
                 <input type="text" id="z-index" value="2147483000" style="max-width:120px" placeholder="zIndex"/>
                 <label style="display:inline-flex;align-items:center;gap:6px;margin:0;">
                     <input type="checkbox" id="allow-fullscreen" checked/> allowFullscreen
+                </label>
+                <label style="display:inline-flex;align-items:center;gap:6px;margin:0;">
+                    <input type="checkbox" id="show-close-button" checked/> showCloseButton
                 </label>
             </div>
 
@@ -78,11 +101,12 @@
                 <button id="btn-toggle">toggle</button>
                 <button id="btn-update-jwt">updateJwt (current)</button>
                 <button id="btn-set-theme">setTheme (current)</button>
+                <button id="btn-set-location">setLocation (current)</button>
                 <button id="btn-clear-log">clear log</button>
             </div>
         </div>
 
-        <div class="card">
+        <div class="card log-card">
             <h2>Event log</h2>
             <div id="log"></div>
         </div>
@@ -99,21 +123,49 @@
             logEl.insertBefore(el, logEl.firstChild);
         }
 
+        function readLocation() {
+            const id = document.getElementById('location-id').value.trim();
+            if (!id) return undefined;
+            const label = document.getElementById('location-label').value.trim();
+            return label ? { id: id, label: label } : { id: id };
+        }
+
+        function readLocationDirectory() {
+            const raw = document.getElementById('location-directory').value.trim();
+            if (!raw) return undefined;
+            try {
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                    log('error', 'locationDirectory must be a JSON object — ignoring');
+                    return undefined;
+                }
+                return parsed;
+            } catch (e) {
+                log('error', 'locationDirectory is not valid JSON — ignoring');
+                return undefined;
+            }
+        }
+
         function readConfig() {
             const jwt = document.getElementById('jwt').value.trim();
             const baseUrl = document.getElementById('base-url').value.trim();
             const product = document.getElementById('product').value.trim() || undefined;
+            const userName = document.getElementById('user-name').value.trim() || undefined;
+            const chatId = document.getElementById('chat-id').value.trim() || undefined;
+            const location = readLocation();
+            const locationDirectory = readLocationDirectory();
             const theme = document.getElementById('theme').value;
             const width = Number(document.getElementById('width').value) || undefined;
             const height = Number(document.getElementById('height').value) || undefined;
             const zIndex = Number(document.getElementById('z-index').value) || undefined;
             const allowFullscreen = document.getElementById('allow-fullscreen').checked;
+            const showCloseButton = document.getElementById('show-close-button').checked;
             const bubbleOffsetX = Number(document.getElementById('bubble-offset-x').value) || undefined;
             const bubbleOffsetY = Number(document.getElementById('bubble-offset-y').value) || undefined;
             const panelOffsetX = Number(document.getElementById('panel-offset-x').value) || undefined;
             const panelGap = Number(document.getElementById('panel-gap').value) || undefined;
             const bubbleIconOnly = document.getElementById('bubble-icon-only').checked;
-            return { jwt, baseUrl, product, theme, width, height, zIndex, allowFullscreen, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly };
+            return { jwt, baseUrl, product, userName, chatId, location, locationDirectory, theme, width, height, zIndex, allowFullscreen, showCloseButton, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly };
         }
 
         function ensureScriptLoaded(baseUrl) {
@@ -130,10 +182,18 @@
 
         function wireEventListeners() {
             if (!window.MercuryChat) return;
-            ['ready', 'error', 'open', 'close', 'expand', 'collapse'].forEach(function (evt) {
+            ['ready', 'error', 'open', 'close', 'expand', 'collapse', 'locationRequest'].forEach(function (evt) {
                 MercuryChat.on(evt, function (payload) {
                     log('event', 'on(' + evt + ') ' + (payload ? JSON.stringify(payload) : ''));
                 });
+            });
+            // Demo handler for locationRequest: prompt the host user, then push back via setLocation
+            MercuryChat.on('locationRequest', function () {
+                const id = window.prompt('locationRequest from chat — enter new building id (blank to cancel)');
+                if (!id) return;
+                const label = window.prompt('Optional label (blank to use id)') || undefined;
+                log('call', 'setLocation(' + JSON.stringify({ id: id, label: label }) + ')');
+                MercuryChat.setLocation({ id: id, label: label });
             });
         }
 
@@ -176,6 +236,11 @@
             const theme = document.getElementById('theme').value;
             log('call', 'setTheme(' + theme + ')');
             if (window.MercuryChat) MercuryChat.setTheme(theme);
+        });
+        document.getElementById('btn-set-location').addEventListener('click', () => {
+            const loc = readLocation();
+            log('call', 'setLocation(' + JSON.stringify(loc ?? null) + ')');
+            if (window.MercuryChat) MercuryChat.setLocation(loc ?? null);
         });
         document.getElementById('btn-clear-log').addEventListener('click', () => { logEl.innerHTML = ''; });
 
