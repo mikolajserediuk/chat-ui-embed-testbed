@@ -65,11 +65,15 @@
             <label for="location-directory">locationDirectory <em style="font-weight:normal;color:#7a8492">(JSON: { "id": "label" })</em></label>
             <textarea id="location-directory" placeholder='{ "bldg-1": "HQ", "bldg-2": "Annex" }'></textarea>
 
-            <label>theme / width / height / zIndex / allowFullscreen / showCloseButton</label>
+            <label>theme / position / width / height / zIndex / allowFullscreen / showCloseButton</label>
             <div class="row">
                 <select id="theme" style="max-width:90px">
                     <option value="light">light</option>
                     <option value="dark">dark</option>
+                </select>
+                <select id="position" style="max-width:90px" title="position">
+                    <option value="br">br</option>
+                    <option value="bl">bl</option>
                 </select>
                 <input type="text" id="width" value="600" style="max-width:80px" placeholder="width"/>
                 <input type="text" id="height" value="800" style="max-width:80px" placeholder="height"/>
@@ -139,11 +143,25 @@
                     log('error', 'locationDirectory must be a JSON object — ignoring');
                     return undefined;
                 }
-                return parsed;
+                const out = {};
+                let dropped = 0;
+                for (const k of Object.keys(parsed)) {
+                    if (typeof parsed[k] === 'string') out[k] = parsed[k];
+                    else dropped += 1;
+                }
+                if (dropped > 0) log('error', 'locationDirectory: dropped ' + dropped + ' non-string value(s)');
+                return Object.keys(out).length > 0 ? out : undefined;
             } catch (e) {
                 log('error', 'locationDirectory is not valid JSON — ignoring');
                 return undefined;
             }
+        }
+
+        function readNumber(id) {
+            const v = document.getElementById(id).value.trim();
+            if (v === '') return undefined;
+            const n = Number(v);
+            return Number.isFinite(n) ? n : undefined;
         }
 
         function readConfig() {
@@ -155,17 +173,18 @@
             const location = readLocation();
             const locationDirectory = readLocationDirectory();
             const theme = document.getElementById('theme').value;
-            const width = Number(document.getElementById('width').value) || undefined;
-            const height = Number(document.getElementById('height').value) || undefined;
-            const zIndex = Number(document.getElementById('z-index').value) || undefined;
+            const position = document.getElementById('position').value;
+            const width = readNumber('width');
+            const height = readNumber('height');
+            const zIndex = readNumber('z-index');
             const allowFullscreen = document.getElementById('allow-fullscreen').checked;
             const showCloseButton = document.getElementById('show-close-button').checked;
-            const bubbleOffsetX = Number(document.getElementById('bubble-offset-x').value) || undefined;
-            const bubbleOffsetY = Number(document.getElementById('bubble-offset-y').value) || undefined;
-            const panelOffsetX = Number(document.getElementById('panel-offset-x').value) || undefined;
-            const panelGap = Number(document.getElementById('panel-gap').value) || undefined;
+            const bubbleOffsetX = readNumber('bubble-offset-x');
+            const bubbleOffsetY = readNumber('bubble-offset-y');
+            const panelOffsetX = readNumber('panel-offset-x');
+            const panelGap = readNumber('panel-gap');
             const bubbleIconOnly = document.getElementById('bubble-icon-only').checked;
-            return { jwt, baseUrl, product, userName, chatId, location, locationDirectory, theme, width, height, zIndex, allowFullscreen, showCloseButton, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly };
+            return { jwt, baseUrl, product, userName, chatId, location, locationDirectory, theme, position, width, height, zIndex, allowFullscreen, showCloseButton, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly };
         }
 
         function ensureScriptLoaded(baseUrl) {
