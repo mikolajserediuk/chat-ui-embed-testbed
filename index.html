@@ -422,11 +422,34 @@
                 hslOut.textContent = css;
                 txt('primary').value = css;
             }
+            function hexToHsl(hex) {
+                let h = hex.trim().replace('#', '');
+                if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+                const r = parseInt(h.slice(0, 2), 16) / 255;
+                const g = parseInt(h.slice(2, 4), 16) / 255;
+                const b = parseInt(h.slice(4, 6), 16) / 255;
+                const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+                const l = (max + min) / 2;
+                let s = 0, hue = 0;
+                if (d) {
+                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                    if (max === r) hue = ((g - b) / d) % 6;
+                    else if (max === g) hue = (b - r) / d + 2;
+                    else hue = (r - g) / d + 4;
+                    hue *= 60;
+                    if (hue < 0) hue += 360;
+                }
+                return [Math.round(hue), Math.round(s * 100), Math.round(l * 100)];
+            }
             function syncHslFromPrimary() {
-                const m = /^hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)$/i.exec(txt('primary').value.trim());
+                const v = txt('primary').value.trim();
+                const m = /^hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)$/i.exec(v);
                 if (m) { hEl.value = m[1]; sEl.value = m[2]; lEl.value = m[3]; }
+                else if (isHex(v)) { const [hh, ss, ll] = hexToHsl(v); hEl.value = hh; sEl.value = ss; lEl.value = ll; }
                 hslOut.textContent = 'hsl(' + hEl.value + ' ' + sEl.value + '% ' + lEl.value + '%)';
             }
+            sw('primary').addEventListener('input', syncHslFromPrimary);
+            txt('primary').addEventListener('input', syncHslFromPrimary);
             [hEl, sEl, lEl].forEach((el) => el.addEventListener('input', applyHsl));
             hslOut.textContent = 'hsl(' + hEl.value + ' ' + sEl.value + '% ' + lEl.value + '%)';
         })();
