@@ -65,6 +65,24 @@
             <label for="location-directory">locationDirectory <em style="font-weight:normal;color:#7a8492">(JSON: { "id": "label" })</em></label>
             <textarea id="location-directory" placeholder='{ "bldg-1": "HQ", "bldg-2": "Annex" }'></textarea>
 
+            <label for="initial-message">initialMessage <em style="font-weight:normal;color:#7a8492">(auto-sent on bootstrap when no chatId)</em></label>
+            <textarea id="initial-message" placeholder="e.g. Summarize the current screen"></textarea>
+
+            <label for="preferences">preferences <em style="font-weight:normal;color:#7a8492">(JSON object — passed to LLM as IdentityObject.Preferences, merged over building_id)</em></label>
+            <textarea id="preferences" placeholder='{ "screen": "contracts/CTR-25004", "contract_ref": "CTR-25004" }'></textarea>
+
+            <div class="row" style="margin-top:8px">
+                <label style="display:inline-flex;align-items:center;gap:6px;margin:0;">
+                    <input type="checkbox" id="hide-user-input"/> hideUserInput
+                </label>
+                <label style="display:inline-flex;align-items:center;gap:6px;margin:0;">
+                    <input type="checkbox" id="hide-initial-user-message"/> hideInitialUserMessage
+                </label>
+                <label style="display:inline-flex;align-items:center;gap:6px;margin:0;">
+                    <input type="checkbox" id="hide-message-actions"/> hideMessageActions
+                </label>
+            </div>
+
             <label>theme / position / width / height / zIndex / allowFullscreen / showCloseButton</label>
             <div class="row">
                 <select id="theme" style="max-width:90px">
@@ -108,6 +126,46 @@
                 </label>
             </div>
 
+            <label>colors (ColorSchema — blank = default teal; hex / hsl() / rgb() / named accepted)</label>
+            <div class="row" style="align-items:center;gap:6px;">
+                <span style="font-size:12px;color:#667;">presets:</span>
+                <button type="button" class="preset" data-preset="default">Default</button>
+                <button type="button" class="preset" data-preset="purple">Purple</button>
+                <button type="button" class="preset" data-preset="blue">Blue</button>
+                <button type="button" class="preset" data-preset="crimson">Crimson</button>
+                <button type="button" class="preset" data-preset="forest">Forest</button>
+                <button type="button" id="color-clear">clear</button>
+            </div>
+            <div class="row" style="gap:10px;">
+                <label class="ci" style="flex:1;min-width:150px;display:flex;align-items:center;gap:6px;margin:0;font-size:12px;">primary
+                    <input type="color" id="sw-primary" value="#008188" style="width:34px;height:28px;padding:0;border:1px solid #d0d5dd;border-radius:4px;"/>
+                    <input type="text" id="color-primary" style="flex:1;min-width:90px" placeholder="#008188"/>
+                </label>
+                <label class="ci" style="flex:1;min-width:150px;display:flex;align-items:center;gap:6px;margin:0;font-size:12px;">primaryFont
+                    <input type="color" id="sw-primary-font" value="#333333" style="width:34px;height:28px;padding:0;border:1px solid #d0d5dd;border-radius:4px;"/>
+                    <input type="text" id="color-primary-font" style="flex:1;min-width:80px" placeholder="#333"/>
+                </label>
+                <label class="ci" style="flex:1;min-width:170px;display:flex;align-items:center;gap:6px;margin:0;font-size:12px;">primaryBackground
+                    <input type="color" id="sw-primary-background" value="#ffffff" style="width:34px;height:28px;padding:0;border:1px solid #d0d5dd;border-radius:4px;"/>
+                    <input type="text" id="color-primary-background" style="flex:1;min-width:80px" placeholder="#fff"/>
+                </label>
+                <label class="ci" style="flex:1;min-width:160px;display:flex;align-items:center;gap:6px;margin:0;font-size:12px;">secondaryFont
+                    <input type="color" id="sw-secondary-font" value="#5e5e5e" style="width:34px;height:28px;padding:0;border:1px solid #d0d5dd;border-radius:4px;"/>
+                    <input type="text" id="color-secondary-font" style="flex:1;min-width:80px" placeholder="#5e5e5e"/>
+                </label>
+                <label class="ci" style="flex:1;min-width:180px;display:flex;align-items:center;gap:6px;margin:0;font-size:12px;">secondaryBackground
+                    <input type="color" id="sw-secondary-background" value="#f7f7f7" style="width:34px;height:28px;padding:0;border:1px solid #d0d5dd;border-radius:4px;"/>
+                    <input type="text" id="color-secondary-background" style="flex:1;min-width:80px" placeholder="#f7f7f7"/>
+                </label>
+            </div>
+            <div class="row" style="align-items:center;gap:6px;font-size:12px;color:#667;">
+                <span>primary HSL:</span>
+                H <input type="range" id="h-primary" min="0" max="360" value="183" style="flex:1;min-width:90px"/>
+                S <input type="range" id="s-primary" min="0" max="100" value="100" style="flex:1;min-width:90px"/>
+                L <input type="range" id="l-primary" min="0" max="100" value="27" style="flex:1;min-width:90px"/>
+                <span id="hsl-primary-val" style="font-family:monospace;color:#334;min-width:140px;"></span>
+            </div>
+
             <div class="row">
                 <button class="primary" id="btn-init">init</button>
                 <button id="btn-destroy">destroy</button>
@@ -116,6 +174,7 @@
                 <button id="btn-toggle">toggle</button>
                 <button id="btn-update-jwt">updateJwt (current)</button>
                 <button id="btn-set-theme">setTheme (current)</button>
+                <button id="btn-set-colors">setColors (current)</button>
                 <button id="btn-set-location">setLocation (current)</button>
                 <button id="btn-clear-log">clear log</button>
             </div>
@@ -175,6 +234,38 @@
             return Number.isFinite(n) ? n : undefined;
         }
 
+        function readPreferences() {
+            const raw = document.getElementById('preferences').value.trim();
+            if (!raw) return undefined;
+            try {
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                    log('error', 'preferences must be a JSON object — ignoring');
+                    return undefined;
+                }
+                return parsed;
+            } catch (e) {
+                log('error', 'preferences is not valid JSON — ignoring');
+                return undefined;
+            }
+        }
+
+        function readColors() {
+            const map = {
+                primary: 'color-primary',
+                primaryFont: 'color-primary-font',
+                primaryBackground: 'color-primary-background',
+                secondaryFont: 'color-secondary-font',
+                secondaryBackground: 'color-secondary-background',
+            };
+            const colors = {};
+            Object.keys(map).forEach((key) => {
+                const value = document.getElementById(map[key]).value.trim();
+                if (value) colors[key] = value;
+            });
+            return Object.keys(colors).length ? colors : undefined;
+        }
+
         function readConfig() {
             const jwt = document.getElementById('jwt').value.trim();
             const baseUrl = document.getElementById('base-url').value.trim();
@@ -198,7 +289,13 @@
             const panelOffsetX = readNumber('panel-offset-x');
             const panelGap = readNumber('panel-gap');
             const bubbleIconOnly = document.getElementById('bubble-icon-only').checked;
-            return { jwt, baseUrl, product, userName, chatId, location, locationDirectory, theme, position, width, height, zIndex, allowFullscreen, showCloseButton, initialSidebarCollapsed, hideSidebarToggle, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly };
+            const initialMessage = document.getElementById('initial-message').value.trim() || undefined;
+            const preferences = readPreferences();
+            const hideUserInput = document.getElementById('hide-user-input').checked || undefined;
+            const hideInitialUserMessage = document.getElementById('hide-initial-user-message').checked || undefined;
+            const hideMessageActions = document.getElementById('hide-message-actions').checked || undefined;
+            const colors = readColors();
+            return { jwt, baseUrl, product, userName, chatId, location, locationDirectory, theme, colors, position, width, height, zIndex, allowFullscreen, showCloseButton, initialSidebarCollapsed, hideSidebarToggle, bubbleOffsetX, bubbleOffsetY, panelOffsetX, panelGap, bubbleIconOnly, initialMessage, preferences, hideUserInput, hideInitialUserMessage, hideMessageActions };
         }
 
         function ensureScriptLoaded(baseUrl) {
@@ -270,11 +367,70 @@
             log('call', 'setTheme(' + theme + ')');
             if (window.MercuryChat) MercuryChat.setTheme(theme);
         });
+        document.getElementById('btn-set-colors').addEventListener('click', () => {
+            const colors = readColors();
+            if (!colors) return log('error', 'no colors set (fill at least one ColorSchema field)');
+            log('call', 'setColors(' + JSON.stringify(colors) + ')');
+            if (window.MercuryChat) MercuryChat.setColors(colors);
+        });
         document.getElementById('btn-set-location').addEventListener('click', () => {
             const loc = readLocation();
             log('call', 'setLocation(' + JSON.stringify(loc ?? null) + ')');
             if (window.MercuryChat) MercuryChat.setLocation(loc ?? null);
         });
+        // --- Color controls: presets, picker↔text sync, primary HSL sliders ---
+        (function setupColorControls() {
+            const FIELDS = ['primary', 'primary-font', 'primary-background', 'secondary-font', 'secondary-background'];
+            const PRESETS = {
+                default: {},
+                purple: { primary: '#6b3fa0', 'primary-font': '#222222', 'primary-background': '#ffffff', 'secondary-font': '#5e5e5e', 'secondary-background': '#f4f0fa' },
+                blue: { primary: '#1f6feb', 'primary-font': '#1c2733', 'primary-background': '#ffffff', 'secondary-font': '#5b6470', 'secondary-background': '#eef4fd' },
+                crimson: { primary: '#c81e4a', 'primary-font': '#2a1620', 'primary-background': '#ffffff', 'secondary-font': '#6b5560', 'secondary-background': '#fdeef2' },
+                forest: { primary: '#2e7d4f', 'primary-font': '#1b2a20', 'primary-background': '#ffffff', 'secondary-font': '#566b5e', 'secondary-background': '#eef6f0' },
+            };
+            const txt = (f) => document.getElementById('color-' + f);
+            const sw = (f) => document.getElementById('sw-' + f);
+            const isHex = (v) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
+
+            FIELDS.forEach((f) => {
+                sw(f).addEventListener('input', () => { txt(f).value = sw(f).value; });
+                txt(f).addEventListener('input', () => { if (isHex(txt(f).value)) sw(f).value = txt(f).value.trim(); });
+            });
+
+            document.querySelectorAll('.preset').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const p = PRESETS[btn.dataset.preset] || {};
+                    FIELDS.forEach((f) => {
+                        const v = p[f] || '';
+                        txt(f).value = v;
+                        if (isHex(v)) sw(f).value = v;
+                    });
+                    syncHslFromPrimary();
+                });
+            });
+
+            document.getElementById('color-clear').addEventListener('click', () => {
+                FIELDS.forEach((f) => { txt(f).value = ''; });
+            });
+
+            const hEl = document.getElementById('h-primary');
+            const sEl = document.getElementById('s-primary');
+            const lEl = document.getElementById('l-primary');
+            const hslOut = document.getElementById('hsl-primary-val');
+            function applyHsl() {
+                const css = 'hsl(' + hEl.value + ' ' + sEl.value + '% ' + lEl.value + '%)';
+                hslOut.textContent = css;
+                txt('primary').value = css;
+            }
+            function syncHslFromPrimary() {
+                const m = /^hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)$/i.exec(txt('primary').value.trim());
+                if (m) { hEl.value = m[1]; sEl.value = m[2]; lEl.value = m[3]; }
+                hslOut.textContent = 'hsl(' + hEl.value + ' ' + sEl.value + '% ' + lEl.value + '%)';
+            }
+            [hEl, sEl, lEl].forEach((el) => el.addEventListener('input', applyHsl));
+            hslOut.textContent = 'hsl(' + hEl.value + ' ' + sEl.value + '% ' + lEl.value + '%)';
+        })();
+
         document.getElementById('btn-clear-log').addEventListener('click', () => { logEl.innerHTML = ''; });
 
         log('call', 'ready; paste JWT and click init');
